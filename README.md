@@ -1,68 +1,110 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
+1. run npm run eject to config project to ensure PWA.
 
-In the project directory, you can run:
+including context, ContextType, lazy, Suspense memo(优化渲染))
 
-### `npm start`
+context: context提供了一种方式，能够让数据在组件树种传递而不必一级一级手动传递。可以跳过层级，直接从最上级继承， 
+context 有两个派生组件：<Provider> 和 <Consumer>， consumer 是 provider 的后代
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+API： createContext(defaultValue?) defaultValue 经常在consumer 在 provider找不到的时候可以使用，经常用于单元测试
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+一般一个组件只是使用一个context，
 
-### `npm test`
+```
+const BatteryContext = createContext();
+const OnlineContext = createContext();
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+class Leaf extends Component {
+  render() {
+    return (
+      <BatteryContext.Consumer>
+        {
+          battery => (
+            <OnlineContext.Consumer>
+              {
+                online => <h1>Battery: {battery}, Online: {String(online)}</h1>
+              }
+            </OnlineContext.Consumer>
+          )
+        }
+      </BatteryContext.Consumer>
+    )
+  }
+}
 
-### `npm run build`
+class Middle extends Component {
+  render() {
+    return (
+      <Leaf />
+    )
+  }
+}
+class App extends Component {
+  // simplify the state
+  constructor(props) {
+    super(props);
+    this.state = {
+      battery: 60,
+      online: false
+    }
+  }
+  render() {
+    const { battery, online } = this.state;
+    return (
+      <BatteryContext.Provider value={battery}>
+        <OnlineContext.Provider value={online}>
+          <button type='button' onClick={() => this.setState({battery: battery - 1})}>
+            Press
+          </button>
+          <button type='button' onClick={() => this.setState({online: !online})}>
+            Switch
+          </button>
+          <Middle />
+        </OnlineContext.Provider>
+      </BatteryContext.Provider>
+    );
+  }
+  
+}
+```
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+```
+static contextType = BatteryContext;
+  // contextType will replace BatteryContext.Consumer
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+程序运行的时候的提升性能： lazy, suspense
+暂时没有使用的资源就需要：延迟加载
+webpack code-splitting 
+import `import('..).then(...)`
 
-### `npm run eject`
+memo: 运行时性能优化
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+React 就是数据和视图的桥梁
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```
+const About = lazy(() => import(/*webpackChunkName: "about" */'./About'));
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+<Fragment>
+  <Suspense fallback={<div>loading</div>}>
+    <About />
+  </Suspense>
+</Fragment>
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+componentDidCatch() {
+  this.setState({
+    hasError: true
+  })
+}
 
-## Learn More
+// static getDerivedStateFromError() {
+//   reurn {
+//     hasError: true,
+//   };
+// }
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+考虑到PureComponent 以及memo的问题，应该可以使用静态类方法或者静态类属性，也就是箭头函数.可以和pureComponent 联合使用了，当然也可以使用memo for 函数组件
 
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
